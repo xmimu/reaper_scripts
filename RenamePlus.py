@@ -1,7 +1,6 @@
 import re
 import os
 import csv
-from functools import wraps
 import tkinter as tk
 from tkinter import ttk, simpledialog, filedialog, messagebox
 
