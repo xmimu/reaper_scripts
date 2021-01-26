@@ -12,8 +12,8 @@ from tkinter import ttk, simpledialog, filedialog, messagebox
 # Email  : 1101588023@qq.com / cccomposer510@gmail.com
 # Bug    :
 #     1.Python standard library cannot get Mark/Region name,
-#Use "Mark_1, Mark_2" instead of Mark name
-#Also used instead of region name.
+# Use "Mark_1, Mark_2" instead of Mark name,
+# Also used instead of region name.
 #     2.The change of the region name will
 # be refreshed when the script is closed.
 #     3.Cannot use reaper shortcut when script is enabled.
