@@ -12,7 +12,7 @@ from contextlib import contextmanager
 # Date   : 2020-01-27
 # Author : Pear
 # Email  : 1101588023@qq.com / cccomposer510@gmail.com
-# Info    :
+# Info   :
 #     0.You need to install sws extension.
 #     1.The change of the region name will
 # be refreshed when the script is closed.
@@ -38,7 +38,7 @@ def log(msg, end='\n'):
 
 def clear_log():
     RPR_ClearConsole()
-    
+
 
 def get_tracks():
     tracks = []
@@ -51,12 +51,12 @@ def get_tracks():
 
 
 def get_selected_tracks():
-    tracks = []
+    selected_tracks = []
     tracks = get_tracks()
     for i in tracks:
         if i[-1] == 2:
             selected_tracks.append(i)
-    return tracks
+    return selected_tracks
 
 
 def set_track_name(tr, name):
@@ -67,7 +67,7 @@ def get_regions():
     regions = []
     (rerval, proj,
      marks_num, regions_num) = RPR_CountProjectMarkers(0, 0, 0)
-    
+
     for i in range(rerval):  # reval  = all marks count
         # get region info except region name
         (retval, idx, isrgnOut, posOut, rgnendOut, nameOut,
@@ -76,8 +76,8 @@ def get_regions():
             continue
         region_info = (markrgnindexnumberOut, isrgnOut, posOut, rgnendOut)
 
-        fs = SNM_CreateFastString("") # get region name
-        SNM_GetProjectMarkerName(0, markrgnindexnumberOut, isrgnOut, fs )
+        fs = SNM_CreateFastString("")  # get region name
+        SNM_GetProjectMarkerName(0, markrgnindexnumberOut, isrgnOut, fs)
         name = SNM_GetFastString(fs)
         SNM_DeleteFastString(fs)
         regions.append([region_info, name])
@@ -105,8 +105,8 @@ def get_marks():
             continue
         mark_info = (markrgnindexnumberOut, isrgnOut, posOut, rgnendOut)
 
-        fs = SNM_CreateFastString("") # get region name
-        SNM_GetProjectMarkerName(0, markrgnindexnumberOut, isrgnOut, fs )
+        fs = SNM_CreateFastString("")  # get region name
+        SNM_GetProjectMarkerName(0, markrgnindexnumberOut, isrgnOut, fs)
         name = SNM_GetFastString(fs)
         SNM_DeleteFastString(fs)
         marks.append([mark_info, name])
@@ -131,6 +131,17 @@ def get_media_items():
         take_name = RPR_GetTakeName(take)
         items.append([take, take_name])
     return items
+
+
+def get_selected_media_items():
+    selected_items = []
+    count = RPR_CountSelectedMediaItems(0)
+    for idx in range(count):
+        item = RPR_GetSelectedMediaItem(0, idx)
+        take = RPR_GetMediaItemTake(item, 0)
+        take_name = RPR_GetTakeName(take)
+        selected_items.append([take, take_name])
+    return selected_items
 
 
 def set_take_name(idx, name):
@@ -230,10 +241,14 @@ class Application(tk.Frame):
 
         if self.cbx_var.get() == 'Tracks':
             self.refresh_tracks()
+        elif self.cbx_var.get() == 'Selected Tracks':
+            self.refresh_selected_tracks()
         elif self.cbx_var.get() == 'Regions':
             self.refresh_regions()
         elif self.cbx_var.get() == 'Media Items':
             self.refresh_media_items()
+        elif self.cbx_var.get() == 'Selected Media Items':
+            self.refresh_selected_media_items()
         elif self.cbx_var.get() == 'Marks':
             self.refresh_marks()
 
@@ -244,6 +259,11 @@ class Application(tk.Frame):
         for index, tr in enumerate(self.tracks):
             self.tree.insert('', 'end',  value=(index, tr[0]))
 
+    def refresh_selected_tracks(self):
+        self.selected_tracks = get_selected_tracks()
+        for index, tr in enumerate(self.selected_tracks):
+            self.tree.insert('', 'end',  value=(index, tr[0]))
+
     def refresh_regions(self):
         self.regions = get_regions()
         for index, region in enumerate(self.regions):
@@ -252,6 +272,11 @@ class Application(tk.Frame):
     def refresh_media_items(self):
         self.media_items = get_media_items()
         for index, item in enumerate(self.media_items):
+            self.tree.insert('', 'end',  value=(index, item[1]))
+
+    def refresh_selected_media_items(self):
+        self.selected_media_items = get_selected_media_items()
+        for index, item in enumerate(self.selected_media_items):
             self.tree.insert('', 'end',  value=(index, item[1]))
 
     def refresh_marks(self):
@@ -285,12 +310,21 @@ class Application(tk.Frame):
         if self.cbx_var.get() == 'Tracks':
             with undo_block('Rename Trakcs ~'):
                 self.rename_tracks()
+        elif self.cbx_var.get() == 'Selected Tracks':
+            with undo_block('Rename Selected Trakcs ~'):
+                self.rename_selected_tracks()
         elif self.cbx_var.get() == 'Regions':
-            self.rename_regions()
+            with undo_block('Rename Regions ~'):
+                self.rename_regions()
         elif self.cbx_var.get() == 'Media Items':
-            self.rename_media_items()
+            with undo_block('Rename Media Items ~'):
+                self.rename_media_items()
+        elif self.cbx_var.get() == 'Selected Media Items':
+            with undo_block('Rename Selected Media Items ~'):
+                self.rename_selected_media_items()
         elif self.cbx_var.get() == 'Marks':
-            self.rename_marks()
+            with undo_block('Rename Marks ~'):
+                self.rename_marks()
 
         self.refresh()
 
@@ -303,6 +337,15 @@ class Application(tk.Frame):
                 tr = self.tracks[idx][1]
                 set_track_name(tr, new_name)
 
+    def rename_selected_tracks(self):
+        for i in self.tree.get_children():
+            v = self.tree.item(i).get('values')
+            if len(v) == 3 and str(v[2]).strip():
+                idx = v[0]
+                new_name = v[2]
+                tr = self.selected_tracks[idx][1]
+                set_track_name(tr, new_name)
+
     def rename_regions(self):
         for i in self.tree.get_children():
             v = self.tree.item(i).get('values')
@@ -312,7 +355,18 @@ class Application(tk.Frame):
                 new_name = v[2]
                 set_region_name(idx, new_name)
 
+    def rename_selected_regions(self):
+        pass
+
     def rename_media_items(self):
+        for i in self.tree.get_children():
+            v = self.tree.item(i).get('values')
+            if len(v) == 3 and str(v[2]).strip():
+                idx = v[0]
+                new_name = v[2]
+                set_take_name(idx, new_name)
+
+    def rename_selected_media_items(self):
         for i in self.tree.get_children():
             v = self.tree.item(i).get('values')
             if len(v) == 3 and str(v[2]).strip():
@@ -328,6 +382,9 @@ class Application(tk.Frame):
                 idx = self.marks[idx][0]
                 new_name = v[2]
                 set_marks_name(idx, new_name)
+
+    def rename_selected_marks(self):
+        pass
 
     def export(self):
         print('Export!')
