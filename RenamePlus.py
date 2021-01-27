@@ -3,24 +3,33 @@ import os
 import csv
 import tkinter as tk
 from tkinter import ttk, simpledialog, filedialog, messagebox
+from reaper_python import *
+from sws_python import *
+from contextlib import contextmanager
 
 
 # =============== INFO ================== #
 # Date   : 2020-01-27
 # Author : Pear
 # Email  : 1101588023@qq.com / cccomposer510@gmail.com
-# Bug    :
-#     1.Python standard library cannot get Mark/Region name,
-# Use "Mark_1, Mark_2" instead of Mark name,
-# Also used instead of region name.
-#     2.The change of the region name will
+# Info    :
+#     0.You need to install sws extension.
+#     1.The change of the region name will
 # be refreshed when the script is closed.
-#     3.Cannot use reaper shortcut when script is enabled.
-#     4.I really love Google Translate. :)
+#     2.Cannot use reaper shortcut when script is enabled.
+#     3.I really love Google Translate. :)
 # =============== INFO ================== #
 
 
 # =============== REPAER API ================== #
+
+@contextmanager
+def undo_block(msg):
+    RPR_Undo_BeginBlock2(0)
+    try:
+        yield
+    finally:
+        RPR_Undo_EndBlock2(0, msg, 1)
 
 
 def log(msg, end='\n'):
@@ -29,7 +38,7 @@ def log(msg, end='\n'):
 
 def clear_log():
     RPR_ClearConsole()
-
+    
 
 def get_tracks():
     tracks = []
@@ -51,23 +60,27 @@ def get_selected_tracks():
 
 
 def set_track_name(tr, name):
-    RPR_Undo_BeginBlock()
     RPR_GetSetMediaTrackInfo_String(tr, 'P_NAME', name, True)
-    RPR_Undo_EndBlock(f'Set track name: {name}', 0)
 
 
 def get_regions():
     regions = []
     (rerval, proj,
      marks_num, regions_num) = RPR_CountProjectMarkers(0, 0, 0)
-    name_count = 0 # ...
+    
     for i in range(rerval):  # reval  = all marks count
+        # get region info except region name
         (retval, idx, isrgnOut, posOut, rgnendOut, nameOut,
-         markrgnindexnumberOut) = RPR_EnumProjectMarkers(i, 0, 0, 0, f'region_{name_count+1}', 0)
-        if isrgnOut:
-            region_info = (markrgnindexnumberOut, isrgnOut, posOut, rgnendOut)
-            regions.append([region_info, nameOut])
-            name_count += 1
+         markrgnindexnumberOut) = RPR_EnumProjectMarkers(i, 0, 0, 0, 0, 0)
+        if not isrgnOut:
+            continue
+        region_info = (markrgnindexnumberOut, isrgnOut, posOut, rgnendOut)
+
+        fs = SNM_CreateFastString("") # get region name
+        SNM_GetProjectMarkerName(0, markrgnindexnumberOut, isrgnOut, fs )
+        name = SNM_GetFastString(fs)
+        SNM_DeleteFastString(fs)
+        regions.append([region_info, name])
     return regions
 
 
@@ -76,25 +89,27 @@ def get_selected_regions():
 
 
 def set_region_name(region_info, name):
-    RPR_Undo_BeginBlock()
     markrgnindexnumber, isrgn, pos, rgnend = region_info
     RPR_SetProjectMarker(markrgnindexnumber, isrgn, pos, rgnend, name)
-    RPR_Undo_EndBlock(f'Set region name: {name}', 0)
 
 
 def get_marks():
     marks = []
     (rerval, proj,
      marks_num, regions_num) = RPR_CountProjectMarkers(0, 0, 0)
-    name_count = 0 # ...
+
     for i in range(rerval):  # reval  = all marks count
         (retval, idx, isrgnOut, posOut, rgnendOut, nameOut,
-         markrgnindexnumberOut) = RPR_EnumProjectMarkers(i, 0, 0, 0, f'mark_{name_count+1}', 0)
+         markrgnindexnumberOut) = RPR_EnumProjectMarkers(i, 0, 0, 0, 0, 0)
         if isrgnOut:
             continue
         mark_info = (markrgnindexnumberOut, isrgnOut, posOut, rgnendOut)
-        marks.append([mark_info, nameOut])
-        name_count += 1
+
+        fs = SNM_CreateFastString("") # get region name
+        SNM_GetProjectMarkerName(0, markrgnindexnumberOut, isrgnOut, fs )
+        name = SNM_GetFastString(fs)
+        SNM_DeleteFastString(fs)
+        marks.append([mark_info, name])
     return marks
 
 
@@ -103,10 +118,8 @@ def get_selected_marks():
 
 
 def set_marks_name(mark_info, name):
-    RPR_Undo_BeginBlock()
     markrgnindexnumber, isrgn, pos, rgnend = mark_info
     RPR_SetProjectMarker(markrgnindexnumber, isrgn, pos, rgnend, name)
-    RPR_Undo_EndBlock(f'Set region name: {name}', 0)
 
 
 def get_media_items():
@@ -270,7 +283,8 @@ class Application(tk.Frame):
             return
 
         if self.cbx_var.get() == 'Tracks':
-            self.rename_tracks()
+            with undo_block('Rename Trakcs ~'):
+                self.rename_tracks()
         elif self.cbx_var.get() == 'Regions':
             self.rename_regions()
         elif self.cbx_var.get() == 'Media Items':
