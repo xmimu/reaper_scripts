@@ -18,6 +18,7 @@ from contextlib import contextmanager
 # be refreshed when the script is closed.
 #     2.Cannot use reaper shortcut when script is enabled.
 #     3.I really love Google Translate. :)
+#  π”√ANSI±‡¬Î±£¥Ê
 # =============== INFO ================== #
 
 
